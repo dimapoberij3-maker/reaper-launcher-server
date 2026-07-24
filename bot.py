@@ -4,8 +4,8 @@ import asyncio
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"  # <--- Вставьте сюда ваш токен от @BotFather!
-DATABASE_URL = "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@dpg-d9hth27lk1mc738g881g-a.oregon-postgres.render.com/reaperdb"
+BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"  # <--- Вставьте сюда ваш токен от @BotFather!
+DATABASE_URL = "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@://render.com"
 CURRENT_VERSION = "1.0"
 # ==========================================================
 
@@ -106,6 +106,7 @@ def register_user(message):
         bot.reply_to(message, "❌ Формат: `/reg логин пароль`")
         return
         
+    # Исправленное считывание аргументов
     login, password = args[1], args[2]
     
     try:
@@ -123,7 +124,7 @@ def register_user(message):
         bot.reply_to(message, f"❌ Ошибка регистрации: {e}")
 
 def run_bot_polling():
-    print("Telegram-бот запущен локально...")
+    print("Telegram-бот запущен...")
     bot.infinity_polling()
 
 if __name__ == "__main__":
@@ -136,5 +137,5 @@ if __name__ == "__main__":
     import threading
     threading.Thread(target=run_bot_polling, daemon=True).start()
     
-    print("Сервер API запускается на порту 5000...")
-    web.run_app(server_app, host='0.0.0.0', port=5000, handle_signals=False)
+    print("Сервер API запускается на порту 10000...")
+    web.run_app(server_app, host='0.0.0.0', port=10000, handle_signals=False)
