@@ -7,7 +7,7 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"  # <--- Обязательно вставьте ваш токен от @BotFather!
+BOT_TOKEN = "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"  # <--- Обязательно вставьте ваш токен от @BotFather!
 CURRENT_VERSION = "1.0"
 
 # Вшиваем внутреннюю (Internal) ссылку на вашу базу reaperdb
