@@ -146,6 +146,36 @@ async def send_welcome(message):
 
 @bot.message_handler(func=lambda message: message.from_user.id == ADMIN_TG_ID)
 async def admin_buttons_handler(message):
+    # Исправление: Проверяем, ввёл ли админ команду регистрации текстом
+    if message.text.startswith("/reg"):
+        args = message.text.split()
+        if len(args) != 3:
+            await bot.reply_to(message, "❌ Формат: `/reg логин пароль`")
+            return
+            
+        login = args[1]
+        password = args[2]
+        default_sub_expires = datetime.now() + timedelta(days=10)
+        
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO users (tg_id, login, password, subscription_expires) VALUES (%s, %s, %s, %s) RETURNING id", 
+                (message.from_user.id, login, password, default_sub_expires)
+            )
+            user_id = cursor.fetchone()[0]
+            conn.commit()
+            cursor.close()
+            conn.close()
+            await bot.reply_to(message, f"✅ Успешно! Создан аккаунт с подпиской на 10 дней.\n🆔 Ваш ID: `{user_id}`")
+        except psycopg2.IntegrityError:
+            await bot.reply_to(message, "❌ Этот логин уже занят!")
+        except Exception as e:
+            await bot.reply_to(message, f"❌ Ошибка базы данных: {e}")
+        return
+
+    # Обработка стандартных админ-кнопок
     if message.text == "⏳ Выдать подписку":
         await bot.reply_to(message, "📝 *Шаблон выдачи подписки:*\n`/subscribe количество_дней логин` (например: `/subscribe 30 testuser`)\n\n↩ Для отмены отправьте /back", parse_mode="Markdown")
     elif message.text == "🔓 Сбросить HWID":
@@ -157,14 +187,14 @@ async def admin_buttons_handler(message):
             conn = psycopg2.connect(DATABASE_URL)
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM users")
-            total_users = cursor.fetchone()
+            total_users = cursor.fetchone()[0]
             cursor.close()
             conn.close()
             await bot.reply_to(message, f"📊 *Текущая статистика:*\nВсего пользователей в базе: `{total_users}`", parse_mode="Markdown")
         except Exception as e:
             await bot.reply_to(message, f"❌ Ошибка получения статистики: {e}")
 
-# --- ТЕКСТОВЫЕ АДМИН-КОМАНДЫ ---
+# --- ОБРАБОТКА ТЕКСТОВЫХ АДМИН-КОМАНД ---
 
 @bot.message_handler(commands=['subscribe'])
 async def cmd_subscribe(message):
@@ -174,10 +204,10 @@ async def cmd_subscribe(message):
         await bot.reply_to(message, "❌ Формат: `/subscribe дни логин`")
         return
     
+    days = int(args[1])
+    login = args[2]
+    
     try:
-        days = int(args)
-        login = args
-        
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("SELECT subscription_expires FROM users WHERE login = %s", (login,))
@@ -189,7 +219,7 @@ async def cmd_subscribe(message):
             conn.close()
             return
             
-        current_expires = row
+        current_expires = row[0]
         now = datetime.now()
         
         if current_expires is None or current_expires < now:
@@ -213,8 +243,8 @@ async def cmd_unban_hwid(message):
         await bot.reply_to(message, "❌ Формат: `/unban_hwid логин`")
         return
     
+    login = args[1]
     try:
-        login = args
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET hwid = NULL WHERE login = %s", (login,))
@@ -233,9 +263,9 @@ async def cmd_setrole(message):
         await bot.reply_to(message, "❌ Формат: `/setrole роль логин`")
         return
     
+    role = args[1]
+    login = args[2]
     try:
-        role = args
-        login = args
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET role = %s WHERE login = %s", (role, login))
@@ -245,6 +275,7 @@ async def cmd_setrole(message):
         await bot.reply_to(message, f"✅ Роль пользователя `{login}` успешно изменена на `{role}`!")
     except Exception as e:
         await bot.reply_to(message, f"❌ Ошибка: {e}")
+
 
 @bot.message_handler(commands=['reg'])
 async def register_user(message):
