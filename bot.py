@@ -381,6 +381,11 @@ async def send_welcome(message):
 
 @bot.message_handler(func=lambda message: message.from_user.id == ADMIN_TG_ID)
 async def admin_buttons_handler(message):
+    # Если админ ввел команду регистрации, перенаправляем её в нужный обработчик
+    if message.text.startswith("/reg"):
+        await register_user(message)
+        return
+        
     if message.text == "⏳ Выдать подписку":
         await bot.reply_to(message, "📝 *Шаблон выдачи подписки:*\n`/subscribe количество_дней логин` (например: `/subscribe 30 testuser`)\n\n↩ Для отмены отправьте /back", parse_mode="Markdown")
     elif message.text == "🔓 Сбросить HWID":
@@ -392,14 +397,14 @@ async def admin_buttons_handler(message):
             conn = psycopg2.connect(DATABASE_URL)
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM users")
-            total_users = cursor.fetchone()
+            total_users = cursor.fetchone()[0]
             cursor.close()
             conn.close()
             await bot.reply_to(message, f"📊 *Текущая статистика:*\nВсего пользователей в базе: `{total_users}`", parse_mode="Markdown")
         except Exception as e:
             await bot.reply_to(message, f"❌ Ошибка получения статистики: {e}")
 
-# --- ТЕКСТОВЫЕ АДМИН-КОМАНДЫ ---
+# --- ОБРАБОТКА ТЕКСТОВЫХ АДМИН-КОМАНД ---
 
 @bot.message_handler(commands=['subscribe'])
 async def cmd_subscribe(message):
@@ -409,10 +414,10 @@ async def cmd_subscribe(message):
         await bot.reply_to(message, "❌ Формат: `/subscribe дни логин`")
         return
     
+    days = int(args[1])
+    login = args[2]
+    
     try:
-        days = int(args[1])
-        login = args[2]
-        
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("SELECT subscription_expires FROM users WHERE login = %s", (login,))
@@ -448,8 +453,8 @@ async def cmd_unban_hwid(message):
         await bot.reply_to(message, "❌ Формат: `/unban_hwid логин`")
         return
     
+    login = args[1]
     try:
-        login = args[1]
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET hwid = NULL WHERE login = %s", (login,))
@@ -468,9 +473,9 @@ async def cmd_setrole(message):
         await bot.reply_to(message, "❌ Формат: `/setrole роль логин`")
         return
     
+    role = args[1]
+    login = args[2]
     try:
-        role = args[1]
-        login = args[2]
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET role = %s WHERE login = %s", (role, login))
