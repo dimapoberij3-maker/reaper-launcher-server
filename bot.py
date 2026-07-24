@@ -4,7 +4,7 @@ import asyncio
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"  # <--- Вставьте сюда ваш токен от @BotFather!
+BOT_TOKEN = "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"  # <--- Вставьте сюда ваш токен от @BotFather!
 DATABASE_URL = "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@://render.com"
 CURRENT_VERSION = "1.0"
 # ==========================================================
