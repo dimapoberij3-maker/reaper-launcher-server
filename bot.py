@@ -8,7 +8,7 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"  # <--- Ваш токен от @BotFather!
+BOT_TOKEN = "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"  # <--- Обязательно вставьте ваш токен от @BotFather!
 CURRENT_VERSION = "1.0"
 
 # Внутренняя (Internal) ссылка на вашу базу reaperdb
@@ -20,13 +20,21 @@ ADMIN_TG_ID = 5541669577
 
 bot = AsyncTeleBot(BOT_TOKEN)
 
-# Инициализация базы данных (Перевод подписки на TIMESTAMP для реального времени)
+# Модернизированная инициализация БД с авто-исправлением структуры колонок
 def init_db():
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         
-        # Проверяем, существует ли таблица. Если нет — создаем с типом TIMESTAMP
+        # Переименовываем старую колонку в новую, если она еще не переименована
+        try:
+            cursor.execute("ALTER TABLE users RENAME COLUMN subscription TO subscription_expires;")
+            cursor.execute("ALTER TABLE users ALTER COLUMN subscription_expires TYPE TIMESTAMP USING NULL;")
+            conn.commit()
+            print("⚙ Структура базы данных успешно обновлена под реальное время!")
+        except Exception:
+            conn.rollback() # Если колонка уже новая, просто пропускаем ошибку
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -86,7 +94,6 @@ async def login_user_handler(request):
         remaining_time = expires_at - now
         days_left = remaining_time.days
 
-        # Если осталось меньше 1 дня, пишем "0" (в лаунчере будет видно, что пошли последние часы)
         if days_left < 0:
             days_left = 0
 
@@ -129,7 +136,7 @@ async def send_welcome(message):
     if message.from_user.id == ADMIN_TG_ID:
         await bot.reply_to(
             message, 
-            "👑 Добро пожаловать, Главный Администратор dimas30690!\nОкно управления пользователями активировано.", 
+            "👑 Добро пожаловать, Главный Administrator dimas30690!\nОкно управления пользователями активировано.", 
             reply_markup=get_admin_keyboard()
         )
     else:
@@ -160,7 +167,7 @@ async def admin_buttons_handler(message):
         except Exception as e:
             await bot.reply_to(message, f"❌ Ошибка получения статистики: {e}")
 
-# --- ИСПРАВЛЕННАЯ ОБРАБОТКА ТЕКСТОВЫХ АДМИН-КОМАНД (ФИКС ИНДЕКСОВ СТРОК) ---
+# --- ТЕКСТОВЫЕ АДМИН-КОМАНДЫ (С ФИКСОМ ИНДЕКСОВ АРГУМЕНТОВ) ---
 
 @bot.message_handler(commands=['subscribe'])
 async def cmd_subscribe(message):
@@ -170,20 +177,17 @@ async def cmd_subscribe(message):
         await bot.reply_to(message, "❌ Формат: `/subscribe дни логин`")
         return
     
-    # Исправлено: берем точные текстовые строки по индексам
-    days = int(args[1])
-    login = args[2]
-    
     try:
+        days = int(args[1])
+        login = args[2]
+        
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
-        
-        # Сначала проверяем, есть ли пользователь и какой у него текущий срок
         cursor.execute("SELECT subscription_expires FROM users WHERE login = %s", (login,))
         row = cursor.fetchone()
         
         if not row:
-            await bot.reply_to(message, f"❌ Пользователь с логином `{login}` не найден в базе!")
+            await bot.reply_to(message, f"❌ Пользователь с логином `{login}` не найден!")
             cursor.close()
             conn.close()
             return
@@ -191,11 +195,9 @@ async def cmd_subscribe(message):
         current_expires = row[0]
         now = datetime.now()
         
-        # Если подписка уже истекла или её не было, отсчитываем от текущего момента
         if current_expires is None or current_expires < now:
             new_expires = now + timedelta(days=days)
         else:
-            # Если подписка еще активна — прибавляем дни к её окончанию
             new_expires = current_expires + timedelta(days=days)
             
         cursor.execute("UPDATE users SET subscription_expires = %s WHERE login = %s", (new_expires, login))
@@ -204,7 +206,7 @@ async def cmd_subscribe(message):
         conn.close()
         await bot.reply_to(message, f"✅ Пользователю `{login}` успешно начислено `{days}` дней подписки!")
     except Exception as e:
-        await bot.reply_to(message, f"❌ Ошибка базы данных: {e}")
+        await bot.reply_to(message, f"❌ Ошибка: {e}")
 
 @bot.message_handler(commands=['unban_hwid'])
 async def cmd_unban_hwid(message):
@@ -214,8 +216,8 @@ async def cmd_unban_hwid(message):
         await bot.reply_to(message, "❌ Формат: `/unban_hwid логин`")
         return
     
-    login = args[1] # Исправлен индекс аргумента
     try:
+        login = args[1]
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET hwid = NULL WHERE login = %s", (login,))
@@ -234,9 +236,9 @@ async def cmd_setrole(message):
         await bot.reply_to(message, "❌ Формат: `/setrole роль логин`")
         return
     
-    role = args[1]   # Исправлен индекс аргумента
-    login = args[2]  # Исправлен индекс аргумента
     try:
+        role = args[1]
+        login = args[2]
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET role = %s WHERE login = %s", (role, login))
@@ -248,7 +250,6 @@ async def cmd_setrole(message):
         await bot.reply_to(message, f"❌ Ошибка: {e}")
 
 @bot.message_handler(commands=['reg'])
-@bot.message_handler(commands=['reg'])
 async def register_user(message):
     args = message.text.split()
     if len(args) != 3:
@@ -257,8 +258,6 @@ async def register_user(message):
         
     login = args[1]
     password = args[2]
-    
-    # Автоматически высчитываем 10 дней от текущей секунды вперед
     default_sub_expires = datetime.now() + timedelta(days=10)
     
     try:
@@ -294,4 +293,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
