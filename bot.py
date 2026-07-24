@@ -5,12 +5,12 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"
+BOT_TOKEN = "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"
 DATABASE_URL = "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@://render.com"
 CURRENT_VERSION = "1.0"
 
 # ВСТАВЬТЕ СЮДА ВАШ ЦИФРОВОЙ TELEGRAM ID (Узнать можно в @userinfobot)
-ADMIN_TG_ID = 123456789  
+ADMIN_TG_ID = 5541669577  
 # ==========================================================
 
 bot = telebot.TeleBot(BOT_TOKEN)
