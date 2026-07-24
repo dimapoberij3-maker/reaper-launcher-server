@@ -1,3 +1,4 @@
+import os
 import telebot
 import psycopg2
 import asyncio
@@ -6,15 +7,16 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"  # <--- Вставьте ваш токен от @BotFather!
-DATABASE_URL = "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@://render.com"
+BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"  # <--- Вставьте ваш токен от @BotFather!
 CURRENT_VERSION = "1.0"
+
+# Автоматическое и безопасное чтение ссылки на БД из панели Render
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # ВАШ ЦИФРОВОЙ TELEGRAM ID
 ADMIN_TG_ID = 5541669577  
 # ==========================================================
 
-# Асинхронная инициализация бота
 bot = AsyncTeleBot(BOT_TOKEN)
 
 def init_db():
@@ -222,6 +224,10 @@ async def register_user(message):
 # --- ЗАПУСК ЕДИНОГО АСИНХРОННОГО ЦИКЛА ---
 
 async def main():
+    if not DATABASE_URL:
+        print("❌ КРИТИЧЕСКАЯ ОШИБКА: Переменная DATABASE_URL не задана в настройках Render!")
+        return
+
     init_db()
     
     # Инициализация веб-сервера
