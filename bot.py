@@ -9,31 +9,30 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-# Если переменная окружения пустая, используется прямой токен
 BOT_TOKEN = os.getenv("BOT_TOKEN") or "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"
 CURRENT_VERSION = "1.0"
 
-# Если ссылка на базу не передана, используется внутренняя ссылка
 DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@dpg-d9hth27lk1mc738g881g-a/reaperdb"
 
-# ВАШ ЦИФРОВОЙ TELEGRAM ID
 ADMIN_TG_ID = 5541669577  
 # ==========================================================
 
 bot = AsyncTeleBot(BOT_TOKEN)
+
+# Генератор ключей формата REAPER-XXXX-XXXX-XXXX
+def generate_reaper_key():
     chars = string.ascii_uppercase + string.digits
     p1 = ''.join(secrets.choice(chars) for _ in range(4))
     p2 = ''.join(secrets.choice(chars) for _ in range(4))
     p3 = ''.join(secrets.choice(chars) for _ in range(4))
     return f"REAPER-{p1}-{p2}-{p3}"
 
-# Безопасная инициализация базы данных
+# Инициализация базы данных
 def init_db():
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         
-        # Таблица пользователей
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -46,7 +45,6 @@ def init_db():
             )
         ''')
 
-        # Таблица промокодов / ключей
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS promo_keys (
                 id SERIAL PRIMARY KEY,
@@ -104,7 +102,6 @@ async def login_user_handler(request):
         remaining_time = expires_at - now
         days_left = max(0, remaining_time.days)
 
-        # Привязка HWID при первом входе
         if db_hwid is None:
             cursor.execute("UPDATE users SET hwid=%s WHERE id=%s", (client_hwid, user_id))
             conn.commit()
@@ -127,7 +124,6 @@ async def login_user_handler(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": f"Ошибка сервера: {str(e)}"})
 
-# Маршрут для активации промокода из Лаунчера
 async def activate_key_handler(request):
     try:
         data = await request.json()
@@ -140,7 +136,6 @@ async def activate_key_handler(request):
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
 
-        # Проверка ключа
         cursor.execute("SELECT days, is_used FROM promo_keys WHERE key_code = %s", (key_code,))
         key_row = cursor.fetchone()
 
@@ -155,7 +150,6 @@ async def activate_key_handler(request):
             conn.close()
             return web.json_response({"status": "error", "message": "Ключ уже был активирован!"})
 
-        # Получаем пользователя
         cursor.execute("SELECT subscription_expires FROM users WHERE login = %s", (login,))
         user_row = cursor.fetchone()
 
@@ -172,7 +166,6 @@ async def activate_key_handler(request):
         else:
             new_expires = current_expires + timedelta(days=days)
 
-        # Обновляем подписку и помечаем ключ использованным
         cursor.execute("UPDATE users SET subscription_expires = %s WHERE login = %s", (new_expires, login))
         cursor.execute("UPDATE promo_keys SET is_used = TRUE, used_by = %s WHERE key_code = %s", (login, key_code))
         conn.commit()
@@ -184,7 +177,7 @@ async def activate_key_handler(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": f"Ошибка активации: {str(e)}"})
 
-# --- АДМИН ПАНЕЛЬ КНОПКИ ---
+# --- АДМИН ПАНЕЛЬ ---
 
 def get_admin_keyboard():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -201,19 +194,18 @@ async def send_welcome(message):
     if message.from_user.id == ADMIN_TG_ID:
         await bot.reply_to(
             message, 
-            "👑 **Добро пожаловать в панель управления Reaper Client!**\nВыберите действие в меню ниже:", 
+            "👑 **Панель управления Reaper Client**\nВыберите действие в меню ниже:", 
             parse_mode="Markdown",
             reply_markup=get_admin_keyboard()
         )
     else:
         welcome_text = (
             "👋 **Приветствуем в Reaper Client!**\n\n"
-            "Для регистрации в системе лаунчера отправьте команду:\n"
+            "Для регистрации отправьте команду:\n"
             "📝 `/reg логин пароль`"
         )
         await bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove())
 
-# Генерация ключа админом через команду /genkey <дни>
 @bot.message_handler(commands=['genkey'])
 async def cmd_genkey(message):
     if message.from_user.id != ADMIN_TG_ID: 
@@ -237,8 +229,7 @@ async def cmd_genkey(message):
         msg = (
             f"🔑 **Ключ успешно создан!**\n\n"
             f"`{new_key}`\n\n"
-            f"⏳ Срок: **{days} дней**\n"
-            f"Игрок может активировать его прямо в Настройках лаунчера."
+            f"⏳ Срок: **{days} дней**"
         )
         await bot.reply_to(message, msg, parse_mode="Markdown")
     except Exception as e:
@@ -262,7 +253,7 @@ async def cmd_subscribe(message):
         row = cursor.fetchone()
         
         if not row:
-            await bot.reply_to(message, f"❌ Пользователь с логином `{login}` не найден!", parse_mode="Markdown")
+            await bot.reply_to(message, f"❌ Пользователь `{login}` не найден!", parse_mode="Markdown")
             cursor.close()
             conn.close()
             return
@@ -279,7 +270,7 @@ async def cmd_subscribe(message):
         conn.commit()
         cursor.close()
         conn.close()
-        await bot.reply_to(message, f"✅ Пользователю `{login}` успешно начислено `{days}` дней подписки!", parse_mode="Markdown")
+        await bot.reply_to(message, f"✅ Пользователю `{login}` выдано `{days}` дней подписки!", parse_mode="Markdown")
     except Exception as e:
         await bot.reply_to(message, f"❌ Ошибка: {e}")
 
@@ -299,7 +290,7 @@ async def cmd_unban_hwid(message):
         conn.commit()
         cursor.close()
         conn.close()
-        await bot.reply_to(message, f"✅ Привязка HWID для `{login}` успешно сброшена!", parse_mode="Markdown")
+        await bot.reply_to(message, f"✅ HWID для `{login}` сброшен!", parse_mode="Markdown")
     except Exception as e:
         await bot.reply_to(message, f"❌ Ошибка: {e}")
 
@@ -320,7 +311,7 @@ async def cmd_setrole(message):
         conn.commit()
         cursor.close()
         conn.close()
-        await bot.reply_to(message, f"✅ Роль пользователя `{login}` успешно изменена на `{role}`!", parse_mode="Markdown")
+        await bot.reply_to(message, f"✅ Роль `{login}` изменена на `{role}`!", parse_mode="Markdown")
     except Exception as e:
         await bot.reply_to(message, f"❌ Ошибка: {e}")
 
@@ -346,23 +337,22 @@ async def register_user(message):
         conn.commit()
         cursor.close()
         conn.close()
-        await bot.reply_to(message, f"✅ Аккаунт **Reaper** успешно создан!\n🎁 Выдана пробная подписка на 10 дней.\n🆔 Ваш ID: `{user_id}`", parse_mode="Markdown")
+        await bot.reply_to(message, f"✅ Аккаунт зарегистрирован!\n🎁 Подписка: 10 дней.\n🆔 ID: `{user_id}`", parse_mode="Markdown")
     except psycopg2.IntegrityError:
-        await bot.reply_to(message, "❌ Этот логин уже занят!")
+        await bot.reply_to(message, "❌ Логин уже занят!")
     except Exception as e:
-        await bot.reply_to(message, f"❌ Ошибка базы данных: {e}")
+        await bot.reply_to(message, f"❌ Ошибка: {e}")
 
-# Обработка админ-кнопок
 @bot.message_handler(func=lambda message: message.from_user.id == ADMIN_TG_ID and message.text in ["⏳ Выдать подписку", "🔑 Сгенерировать ключ", "🔓 Сбросить HWID", "👑 Изменить роль", "📊 Статистика базы"])
 async def admin_buttons_handler(message):
     if message.text == "⏳ Выдать подписку":
-        await bot.reply_to(message, "📝 *Выдача подписки напрямую:*\n`/subscribe количество_дней логин`\n(Пример: `/subscribe 30 testuser`)", parse_mode="Markdown")
+        await bot.reply_to(message, "📝 `/subscribe дни логин`", parse_mode="Markdown")
     elif message.text == "🔑 Сгенерировать ключ":
-        await bot.reply_to(message, "📝 *Генерация промокода:*\n`/genkey количество_дней`\n(Пример: `/genkey 30`)\n\nБудет создан уникальный ключ `REAPER-XXXX-XXXX-XXXX`", parse_mode="Markdown")
+        await bot.reply_to(message, "📝 `/genkey дни` (Пример: `/genkey 30`)", parse_mode="Markdown")
     elif message.text == "🔓 Сбросить HWID":
-        await bot.reply_to(message, "📝 *Сброс привязки ПК:*\n`/unban_hwid логин`", parse_mode="Markdown")
+        await bot.reply_to(message, "📝 `/unban_hwid логин`", parse_mode="Markdown")
     elif message.text == "👑 Изменить роль":
-        await bot.reply_to(message, "📝 *Смена роли:*\n`/setrole название_роли логин`", parse_mode="Markdown")
+        await bot.reply_to(message, "📝 `/setrole роль логин`", parse_mode="Markdown")
     elif message.text == "📊 Статистика базы":
         try:
             conn = psycopg2.connect(DATABASE_URL)
@@ -373,11 +363,11 @@ async def admin_buttons_handler(message):
             active_keys = cursor.fetchone()[0]
             cursor.close()
             conn.close()
-            await bot.reply_to(message, f"📊 *Статистика Reaper DB:*\n• Пользователей: `{total_users}`\n• Неактивированных ключей: `{active_keys}`", parse_mode="Markdown")
+            await bot.reply_to(message, f"📊 **Статистика:**\n• Юзеров: `{total_users}`\n• Ключей: `{active_keys}`", parse_mode="Markdown")
         except Exception as e:
-            await bot.reply_to(message, f"❌ Ошибка статистики: {e}")
+            await bot.reply_to(message, f"❌ Ошибка: {e}")
 
-# --- ЗАПУСК СЕРВЕРА И БОТА ---
+# --- ЗАПУСК ---
 async def main():
     init_db()
     server_app = web.Application()
@@ -389,7 +379,7 @@ async def main():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 10000)
     await site.start()
-    print("🚀 Асинхронный API-сервер Reaper запущен на порту 10000")
+    print("🚀 API-сервер и Бот успешно запущены!")
     await bot.polling(non_stop=True)
 
 if __name__ == "__main__":
