@@ -9,20 +9,18 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = os.getenv("8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0")
+# Если переменная окружения пустая, используется прямой токен
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"
 CURRENT_VERSION = "1.0"
 
-# Ссылка на вашу базу PostgreSQL
-DATABASE_URL = os.getenv("DATABASE_URL", "YOUR_DATABASE_URL_HERE")
+# Если ссылка на базу не передана, используется внутренняя ссылка
+DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@dpg-d9hth27lk1mc738g881g-a/reaperdb"
 
 # ВАШ ЦИФРОВОЙ TELEGRAM ID
 ADMIN_TG_ID = 5541669577  
 # ==========================================================
 
 bot = AsyncTeleBot(BOT_TOKEN)
-
-# Генератор ключей формата REAPER-XXXX-XXXX-XXXX
-def generate_reaper_key():
     chars = string.ascii_uppercase + string.digits
     p1 = ''.join(secrets.choice(chars) for _ in range(4))
     p2 = ''.join(secrets.choice(chars) for _ in range(4))
