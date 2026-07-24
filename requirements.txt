@@ -1,0 +1,3 @@
+pyTelegramBotAPI
+aiohttp
+psycopg2-binary
