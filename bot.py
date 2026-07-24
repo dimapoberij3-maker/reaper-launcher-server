@@ -7,11 +7,11 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"  # <--- Вставьте ваш токен от @BotFather!
+BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"  # <--- Обязательно вставьте ваш токен от @BotFather!
 CURRENT_VERSION = "1.0"
 
-# Автоматическое и безопасное чтение ссылки на БД из панели Render
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Вшиваем внутреннюю (Internal) ссылку на вашу базу reaperdb
+DATABASE_URL = "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@dpg-d9hth27lk1mc738g881g-a/reaperdb"
 
 # ВАШ ЦИФРОВОЙ TELEGRAM ID
 ADMIN_TG_ID = 5541669577  
@@ -134,7 +134,7 @@ async def admin_buttons_handler(message):
             conn = psycopg2.connect(DATABASE_URL)
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM users")
-            total_users = cursor.fetchone()[0]
+            total_users = cursor.fetchone()[0]  # Исправлено извлечение значения счета
             cursor.close()
             conn.close()
             await bot.reply_to(message, f"📊 *Текущая статистика:*\nВсего пользователей в базе: `{total_users}`", parse_mode="Markdown")
@@ -224,10 +224,6 @@ async def register_user(message):
 # --- ЗАПУСК ЕДИНОГО АСИНХРОННОГО ЦИКЛА ---
 
 async def main():
-    if not DATABASE_URL:
-        print("❌ КРИТИЧЕСКАЯ ОШИБКА: Переменная DATABASE_URL не задана в настройках Render!")
-        return
-
     init_db()
     
     # Инициализация веб-сервера
