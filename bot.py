@@ -9,7 +9,7 @@ from telebot import types
 from aiohttp import web
 
 # ==================== НАСТРОЙКИ СЕРВЕРА ====================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+BOT_TOKEN = os.getenv("8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0")
 CURRENT_VERSION = "1.0"
 
 # Ссылка на вашу базу PostgreSQL
