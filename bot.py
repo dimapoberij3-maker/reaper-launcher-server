@@ -12,7 +12,7 @@ from aiohttp import web
 BOT_TOKEN = os.getenv("BOT_TOKEN") or "8963416771:AAHIlA7tiWh6e6fjNLqqkwBj_o2x8n8oBK0"
 CURRENT_VERSION = "1.0"
 
-DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://diams30690:6lw6qhN4oAiSgWyvVlA7DSDUi4ccvw56@dpg-d9hth27lk1mc738g881g-a/reaperdb"
+DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://dimas30690:YIWOeHx5ZcXoCyhpbpu3HhmbTwtHBcGe@dpg-d9hvs3naqgkc73c7nmc0-a/reaperdb_ac5j"
 
 ADMIN_TG_ID = 5541669577  
 # ==========================================================
